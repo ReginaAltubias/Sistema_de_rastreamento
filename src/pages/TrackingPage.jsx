@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Edit, Circle, FileX } from 'lucide-react'
+import { Edit, Circle, FileX, MapPin, Truck, Ship, Train, Plane, Package, Copy, User, LogOut } from 'lucide-react'
 import Timeline from '../components/Timeline'
 import QRCode from 'qrcode.react'
 
@@ -113,9 +113,17 @@ export default function TrackingPage() {
   }, [product?.origin, product?.destination])
 
   if (!product) return (
-    <div className="bg-white p-6 rounded shadow text-center">
-      <p className="mb-4">Produto não encontrado</p>
-      <Link to="/" className="px-4 py-2 bg-indigo-600 text-white rounded">Voltar ao início</Link>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileX className="w-8 h-8 text-red-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Produto não encontrado</h2>
+        <p className="text-gray-600 mb-6">O produto que você está procurando não existe ou foi removido.</p>
+        <Link to="/" className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+          Voltar ao início
+        </Link>
+      </div>
     </div>
   )
 
@@ -138,7 +146,7 @@ export default function TrackingPage() {
   }
 
   async function addCheckpoint() {
-    if (!user) {   
+    if (!user) {
       alert('Faça login para registrar checkpoint.')
       return
     }
@@ -258,7 +266,7 @@ export default function TrackingPage() {
     Quantidade: ${product.quantity}
     Origem: ${product.origin}
     Destino: ${product.destination}
-`;
+  `;
 
   // Função para retornar a imagem do transporte
   function getTransportIconHTML(transport) {
@@ -277,171 +285,348 @@ export default function TrackingPage() {
     }
   }
 
+  // Função para obter cor do status
+  function getStatusColor(status) {
+    switch (status) {
+      case 'Entregue': return 'bg-green-100 text-green-800 border-green-200'
+      case 'Em trânsito': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'Aguardando despacho': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  // Função para obter ícone do transporte
+  function getTransportIcon(transport) {
+    switch (transport) {
+      case 'Camião': return <Truck className="w-4 h-4" />
+      case 'Navio': return <Ship className="w-4 h-4" />
+      case 'Comboio': return <Train className="w-4 h-4" />
+      case 'Avião': return <Plane className="w-4 h-4" />
+      default: return <Package className="w-4 h-4" />
+    }
+  }
+
   return (
-    <div className="bg-white p-6 rounded shadow space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Rastreamento</h2>
-        <div className="text-sm">
-          Status: <strong>{status}</strong>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 p-4 rounded mb-4">
-        <div className="text-base font-semibold mb-2">Dados do Produto</div>
-        {editMode ? (
-          <div className="space-y-2">
-            <input className="border rounded px-2 py-1 w-full" name="name" value={editData.name} onChange={handleEditChange} placeholder="Produto" />
-            <input className="border rounded px-2 py-1 w-full" name="quantity" value={editData.quantity} onChange={handleEditChange} placeholder="Quantidade" />
-            <input className="border rounded px-2 py-1 w-full" name="origin" value={editData.origin} onChange={handleEditChange} placeholder="Origem" />
-            <input className="border rounded px-2 py-1 w-full" name="destination" value={editData.destination} onChange={handleEditChange} placeholder="Destino" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={saveEdit} className="px-3 py-1 bg-green-600 text-white rounded">Salvar</button>
-              <button onClick={() => setEditMode(false)} className="px-3 py-1 bg-gray-400 text-white rounded">Cancelar</button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="w-full mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Rastreamento de Produto</h1>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className={`inline-flex items-center px-4 py-2 rounded-full border-2 ${getStatusColor(status)} font-semibold`}>
+                  <Circle className={`w-3 h-3 mr-2 ${status === 'Entregue' ? 'fill-green-500' : status === 'Em trânsito' ? 'fill-blue-500' : 'fill-yellow-500'}`} />
+                  {status}
+                </div>
+                <div className="text-sm text-gray-600">
+                  ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{id}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            <div><strong>Produto:</strong> {product.name}</div>
-            <div><strong>Quantidade:</strong> {product.quantity}</div>
-            <div><strong>Origem:</strong> {product.origin}</div>
-            <div><strong>Destino:</strong> {product.destination}</div>
-            <button onClick={() => setEditMode(true)} className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded">Editar dados do produto</button>
-          </>
-        )}
-      </div>
-
-      <div className="flex gap-3 items-center">
-        {!user ? (
-          <button onClick={login} className="px-3 py-2 bg-green-600 text-white rounded">Login</button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Logado como <strong>{user}</strong></span>
-            <button onClick={logout} className="px-3 py-2 bg-red-600 text-white rounded">Logout</button>
-          </div>
-        )}
-        <div className="flex gap-2">
-          <button onClick={addCheckpoint} className="px-4 py-2 bg-indigo-600 text-white rounded">Registrar Checkpoint</button>
-          <select id="transportSelect" className="px-3 py-2 border rounded text-sm">
-            <option value="Camião">🚚 Camião</option>
-            <option value="Navio">🚢 Navio</option>
-            <option value="Comboio">🚂 Comboio</option>
-            <option value="Avião">✈️ Avião</option>
-          </select>
-        </div>
-        <button onClick={() => { navigator.clipboard?.writeText(window.location.href); alert('Link copiado') }} className="px-3 py-2 border rounded">Copiar link</button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-1">
-          <Timeline checkpoints={product.checkpoints} route={route} modoTransporte={product.modoTransporte} />
-          <div className="mt-6 flex flex-col items-center">
-            <QRCode value={qrData} size={128} />
-          </div>
-        </div>
-
-        <div className="md:col-span-2">
-          <div className="h-80 mb-3">
-
-            <MapContainer center={mapCenter} zoom={4} className="h-full rounded" scrollWheelZoom={true}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-              {/* Rota principal: origem até destino */}
-              {route.length > 0 && (
-                <Polyline
-                  positions={route}
-                  pathOptions={{
-                    color: product.modoTransporte === 'Avião' ? 'blue' : 'green',
-                    weight: 4, dashArray: '8, 8'
-                  }}
-                />
-              )}
-
-              {/* 2. Trajeto percorrido (checkpoints) */}
-              {product.checkpoints.length > 0 && (
-                <Polyline
-                  positions={[
-                    originCoords,
-                    ...product.checkpoints.map(c => [
-                      parseFloat(c.lat),
-                      parseFloat(c.lng)
-                    ])
-                  ]}
-                  pathOptions={{
-                    color: 'orange',
-                    weight: 4,
-                    dashArray: '8 8'
-                  }}
-                />
-              )}
-
-
-              {/* Marcadores de origem e destino */}
-              {originCoords && (
-                <CircleMarker center={originCoords} radius={8} pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.8 }}>
-                  <Popup>Origem: {product.origin}</Popup>
-                </CircleMarker>
-              )}
-              {destCoords && (
-                <CircleMarker center={destCoords} radius={8} pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.8 }}>
-                  <Popup>Destino: {product.destination}</Popup>
-                </CircleMarker>
-              )}
-
-              {/* Marcadores dos checkpoints */}
-              {product.checkpoints.map((c, i) => (
-                <Marker key={i} position={[c.lat, c.lng]}>
-                  <Popup>
-                    {c.desc}<br />
-                    {c.timestamp}<br />
-                    Operador: {c.operator || 'N/A'}<br />
-                    <span className='flex'>
-                      Transporte:{c.transport}
-                    </span>
-                  </Popup>
-                </Marker>
-              ))}
-
-              {/* Ícone do transporte no último checkpoint */}
-              {product.checkpoints.map((c, i) => {
-                const isLast = i === product.checkpoints.length - 1;
-
-                return (
-                  <Marker
-                    key={i}
-                    position={[c.lat, c.lng]}
-                    icon={isLast
-                      ? L.divIcon({
-                        className: "",
-                        html: getTransportIconHTML(c.transport),
-                      })
-                      : defaultIcon
-                    }
+            
+            <div className="flex items-center gap-3">
+              {!user ? (
+                <button 
+                  onClick={login} 
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Fazer Login
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
+                    <User className="w-4 h-4 text-blue-600 mr-2" />
+                    <span className="text-sm font-medium">Logado como <strong>{user}</strong></span>
+                  </div>
+                  <button 
+                    onClick={logout} 
+                    className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                   >
-                    <Popup>
-                      {c.desc}<br />
-                      {c.timestamp}<br />
-                      Operador: {c.operator || "N/A"}<br />
-                      <span className="flex">
-                        Transporte: {c.transport}
-                      </span>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+                    <LogOut className="w-4 h-4 mr-1" />
+                    Sair
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={() => { navigator.clipboard?.writeText(window.location.href); alert('Link copiado!') }} 
+                className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar Link
+              </button>
+            </div>
+          </div>
+        </div>
 
-            </MapContainer>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Sidebar - Informações do Produto e Timeline */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Card de Informações do Produto */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Package className="w-5 h-5 mr-2 text-indigo-600" />
+                  Informações do Produto
+                </h3>
+                <button 
+                  onClick={() => setEditMode(!editMode)} 
+                  className="flex items-center px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  {editMode ? 'Cancelar' : 'Editar'}
+                </button>
+              </div>
+
+              {editMode ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
+                    <input 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                      name="name" 
+                      value={editData.name} 
+                      onChange={handleEditChange} 
+                      placeholder="Nome do produto" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                    <input 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                      name="quantity" 
+                      value={editData.quantity} 
+                      onChange={handleEditChange} 
+                      placeholder="Quantidade" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
+                    <input 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                      name="origin" 
+                      value={editData.origin} 
+                      onChange={handleEditChange} 
+                      placeholder="Origem" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Destino</label>
+                    <input 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                      name="destination" 
+                      value={editData.destination} 
+                      onChange={handleEditChange} 
+                      placeholder="Destino" 
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={saveEdit} 
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600 font-medium">Produto</span>
+                    <span className="text-gray-900 font-semibold">{product.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600 font-medium">Quantidade</span>
+                    <span className="text-gray-900 font-semibold">{product.quantity}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600 font-medium">Origem</span>
+                    <span className="text-gray-900 font-semibold text-right">{product.origin}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600 font-medium">Destino</span>
+                    <span className="text-gray-900 font-semibold text-right">{product.destination}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card de Ações */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
+                Ações de Rastreamento
+              </h3>
+              <div className="space-y-3">
+                <button 
+                  onClick={addCheckpoint} 
+                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  <MapPin className="w-5 h-5 mr-2" />
+                  Registrar Checkpoint
+                </button>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Meio de Transporte</label>
+                  <select 
+                    id="transportSelect" 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="Camião">🚚 Camião</option>
+                    <option value="Navio">🚢 Navio</option>
+                    <option value="Comboio">🚂 Comboio</option>
+                    <option value="Avião">✈️ Avião</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* QR Code */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Código QR</h3>
+              <div className="flex justify-center">
+                <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-200">
+                  <QRCode value={qrData} size={128} />
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mt-3">Use este código para acesso rápido às informações do produto</p>
+            </div>
           </div>
 
-          {product.modoTransporte === 'Avião' && (
-            <div className="text-xs text-blue-600 mb-2">
-              Rota aérea - conexão direta.
+          {/* Conteúdo Principal - Mapa e Timeline */}
+          <div className="xl:col-span-2 space-y-6">
+            {/* Card do Mapa */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
+                  Mapa de Rastreamento
+                </h3>
+              </div>
+              <div className="h-96">
+                <MapContainer center={mapCenter} zoom={4} className="h-full w-full" scrollWheelZoom={true}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+                  {/* Rota principal: origem até destino */}
+                  {route.length > 0 && (
+                    <Polyline
+                      positions={route}
+                      pathOptions={{
+                        color: product.modoTransporte === 'Avião' ? 'blue' : 'green',
+                        weight: 4, 
+                        dashArray: '8, 8'
+                      }}
+                    />
+                  )}
+
+                  {/* Trajeto percorrido (checkpoints) */}
+                  {product.checkpoints.length > 0 && (
+                    <Polyline
+                      positions={[
+                        originCoords,
+                        ...product.checkpoints.map(c => [
+                          parseFloat(c.lat),
+                          parseFloat(c.lng)
+                        ])
+                      ]}
+                      pathOptions={{
+                        color: 'orange',
+                        weight: 4,
+                        dashArray: '8 8'
+                      }}
+                    />
+                  )}
+
+                  {/* Marcadores de origem e destino */}
+                  {originCoords && (
+                    <CircleMarker center={originCoords} radius={8} pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.8 }}>
+                      <Popup>Origem: {product.origin}</Popup>
+                    </CircleMarker>
+                  )}
+                  {destCoords && (
+                    <CircleMarker center={destCoords} radius={8} pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.8 }}>
+                      <Popup>Destino: {product.destination}</Popup>
+                    </CircleMarker>
+                  )}
+
+                  {/* Marcadores dos checkpoints */}
+                  {product.checkpoints.map((c, i) => (
+                    <Marker key={i} position={[c.lat, c.lng]}>
+                      <Popup>
+                        <div className="min-w-[200px]">
+                          <div className="font-semibold mb-2">{c.desc}</div>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div>📅 {c.timestamp}</div>
+                            <div>👤 Operador: {c.operator || 'N/A'}</div>
+                            <div className="flex items-center">
+                              {getTransportIcon(c.transport)}
+                              <span className="ml-2">Transporte: {c.transport}</span>
+                            </div>
+                            {c.notes && <div>📝 {c.notes}</div>}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+
+                  {/* Ícone do transporte no último checkpoint */}
+                  {product.checkpoints.map((c, i) => {
+                    const isLast = i === product.checkpoints.length - 1;
+
+                    return (
+                      <Marker
+                        key={i}
+                        position={[c.lat, c.lng]}
+                        icon={isLast
+                          ? L.divIcon({
+                            className: "",
+                            html: getTransportIconHTML(c.transport),
+                          })
+                          : defaultIcon
+                        }
+                      >
+                        <Popup>
+                          <div className="min-w-[200px]">
+                            <div className="font-semibold mb-2">{c.desc}</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div>📅 {c.timestamp}</div>
+                              <div>👤 Operador: {c.operator || 'N/A'}</div>
+                              <div className="flex items-center">
+                                {getTransportIcon(c.transport)}
+                                <span className="ml-2">Transporte: {c.transport}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
+                </MapContainer>
+              </div>
+              
+              {product.modoTransporte && (
+                <div className="p-4 bg-gray-50 border-t border-gray-200">
+                  <div className={`text-sm font-medium ${
+                    product.modoTransporte === 'Avião' ? 'text-blue-600' :
+                    product.modoTransporte === 'Carro' ? 'text-green-600' :
+                    'text-gray-600'
+                  }`}>
+                    {product.modoTransporte === 'Avião' && '✈️ Rota aérea - conexão direta'}
+                    {product.modoTransporte === 'Carro' && '🚚 Rota terrestre - trajeto por estradas'}
+                    {product.modoTransporte === 'Navio' && '🚢 Rota marítima - transporte por navio'}
+                    {product.modoTransporte === 'Comboio' && '🚂 Rota ferroviária - transporte por comboio'}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          {product.modoTransporte === 'Carro' && (
-            <div className="text-xs text-green-600 mb-2">
-              Rota terrestre - trajeto por estradas.
+
+            {/* Timeline */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Linha do Tempo</h3>
+              <Timeline checkpoints={product.checkpoints} route={route} modoTransporte={product.modoTransporte} />
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
