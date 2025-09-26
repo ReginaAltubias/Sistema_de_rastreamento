@@ -140,7 +140,7 @@ export default function TrackingPage() {
     }
   }
 
-  function logout() {
+  function logout() {   
     localStorage.removeItem('user')
     setUser(null)
   }
