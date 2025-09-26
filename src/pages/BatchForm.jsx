@@ -11,7 +11,14 @@ export default function BatchForm() {
   const [modoTransporte, setModoTransporte] = useState('Carro')
   const [selectedProducers, setSelectedProducers] = useState([])
   const [producers, setProducers] = useState([])
-  const [newProducer, setNewProducer] = useState({ name: '', location: '', quantity: '' })
+  const [newProducer, setNewProducer] = useState({ 
+    name: '', 
+    bi: '', 
+    type: '', 
+    products: {},
+    location: '', 
+    quantity: '' 
+  })
   const [showAddProducer, setShowAddProducer] = useState(false)
   const navigate = useNavigate()
 
@@ -21,18 +28,21 @@ export default function BatchForm() {
   }, [])
 
   function addProducer() {
-    if (!newProducer.name || !newProducer.location || !newProducer.quantity) return
+    if (!newProducer.name || !newProducer.bi || !newProducer.type || !newProducer.location) return
+    if (Object.keys(newProducer.products).length === 0) return
+    
+    const totalQuantity = Object.values(newProducer.products).reduce((sum, qty) => sum + parseFloat(qty || 0), 0)
     
     const producer = {
       id: Date.now().toString(),
       ...newProducer,
-      quantity: parseFloat(newProducer.quantity)
+      quantity: totalQuantity
     }
     
     const updatedProducers = [...producers, producer]
     setProducers(updatedProducers)
     localStorage.setItem('producersDB', JSON.stringify(updatedProducers))
-    setNewProducer({ name: '', location: '', quantity: '' })
+    setNewProducer({ name: '', bi: '', type: '', products: {}, location: '', quantity: '' })
     setShowAddProducer(false)
   }
 
@@ -197,36 +207,85 @@ export default function BatchForm() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Nome do produtor"
-                    value={newProducer.name}
-                    onChange={(e) => setNewProducer({...newProducer, name: e.target.value})}
-                  />
-                  <input
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Localização"
-                    value={newProducer.location}
-                    onChange={(e) => setNewProducer({...newProducer, location: e.target.value})}
-                  />
-                  <div className="flex gap-2">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <input
-                      type="number"
-                      step="0.1"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Quantidade (t)"
-                      value={newProducer.quantity}
-                      onChange={(e) => setNewProducer({...newProducer, quantity: e.target.value})}
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Nome do produtor"
+                      value={newProducer.name}
+                      onChange={(e) => setNewProducer({...newProducer, name: e.target.value})}
                     />
-                    <button
-                      type="button"
-                      onClick={addProducer}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Adicionar
-                    </button>
+                    <input
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="BI"
+                      value={newProducer.bi}
+                      onChange={(e) => setNewProducer({...newProducer, bi: e.target.value})}
+                    />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newProducer.type}
+                      onChange={(e) => setNewProducer({...newProducer, type: e.target.value})}
+                    >
+                      <option value="">Tipo de Produtor</option>
+                      <option value="Florestal">Florestal</option>
+                      <option value="Agrícola">Agrícola</option>
+                    </select>
+                    <input
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Localização"
+                      value={newProducer.location}
+                      onChange={(e) => setNewProducer({...newProducer, location: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Produtos:</label>
+                    <div className="space-y-2">
+                      {['Café', 'Cacau', 'Madeira'].map(productType => (
+                        <div key={productType} className="flex items-center gap-3">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={!!newProducer.products[productType]}
+                              onChange={(e) => {
+                                const products = {...newProducer.products}
+                                if (e.target.checked) {
+                                  products[productType] = ''
+                                } else {
+                                  delete products[productType]
+                                }
+                                setNewProducer({...newProducer, products})
+                              }}
+                              className="mr-2"
+                            />
+                            {productType}
+                          </label>
+                          {newProducer.products[productType] !== undefined && (
+                            <input
+                              type="number"
+                              step="0.1"
+                              className="w-24 border border-gray-300 rounded px-2 py-1"
+                              placeholder="Qtd (t)"
+                              value={newProducer.products[productType]}
+                              onChange={(e) => {
+                                const products = {...newProducer.products}
+                                products[productType] = e.target.value
+                                setNewProducer({...newProducer, products})
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addProducer}
+                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Adicionar Produtor
+                  </button>
                 </div>
               </div>
             )}
@@ -256,6 +315,12 @@ export default function BatchForm() {
                         <div>
                           <h3 className="font-medium text-gray-900">{producer.name}</h3>
                           <p className="text-sm text-gray-600">{producer.location}</p>
+                          <p className="text-xs text-gray-500">BI: {producer.bi} • {producer.type}</p>
+                          {producer.products && (
+                            <p className="text-xs text-blue-600">
+                              {Object.entries(producer.products).map(([prod, qty]) => `${prod}: ${qty}t`).join(', ')}
+                            </p>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="font-semibold text-gray-900">{producer.quantity}t</div>
