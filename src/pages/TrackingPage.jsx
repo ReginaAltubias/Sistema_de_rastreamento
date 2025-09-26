@@ -138,7 +138,7 @@ export default function TrackingPage() {
   }
 
   async function addCheckpoint() {
-    if (!user) {
+    if (!user) {   
       alert('Faça login para registrar checkpoint.')
       return
     }
