@@ -48,6 +48,7 @@ export default function ProductForm(){
         <select className="w-full border p-2 rounded" value={modoTransporte} onChange={(e)=>setModoTransporte(e.target.value)}>
           <option value="Carro">🚗 Carro</option>
           <option value="Avião">✈️ Avião</option>
+          <option value="Navio">🚢 Navio</option>
         </select>
       </div>
 
