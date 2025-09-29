@@ -375,17 +375,25 @@ export default function BatchTracking() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium text-gray-900">{producer.name || 'Produtor'}</h4>
-                        <p className="text-sm text-gray-600">{producer.location || 'Localização não informada'}</p>
                         <p className="text-xs text-indigo-600 font-mono">
                           Subcódigo: {producer.subCode || 'N/A'}
                         </p>
+                        {producer.batchProducts && Object.keys(producer.batchProducts).length > 0 && (
+                          <div className="mt-1">
+                            {Object.entries(producer.batchProducts).map(([product, qty]) => (
+                              <p key={product} className="text-xs text-gray-600">
+                                {product}: {qty}t
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">{producer.quantity || 0}t</div>
+                        <div className="font-semibold">{producer.batchQuantity || producer.quantity || 0}t</div>
                       </div>
                     </div>
                   </div>
-                ))}
+                ))  }
               </div>
             </div>
 

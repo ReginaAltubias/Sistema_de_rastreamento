@@ -29,15 +29,15 @@ export default function BatchForm() {
   }, [])
 
   function addProducer() {
-    if (!newProducer.name || !newProducer.bi || !newProducer.type || !newProducer.location) return
-    if (Object.keys(newProducer.products).length === 0) return
-
-    const totalQuantity = Object.values(newProducer.products).reduce((sum, qty) => sum + parseFloat(qty || 0), 0)
+    if (!newProducer.name || !newProducer.bi || !newProducer.type) return
 
     const producer = {
       id: Date.now().toString(),
-      ...newProducer,
-      quantity: totalQuantity
+      name: newProducer.name,
+      bi: newProducer.bi,
+      type: newProducer.type,
+      //location: 'N/A',
+      quantity: 0
     }
 
     const updatedProducers = [...producers, producer]
@@ -235,18 +235,15 @@ export default function BatchForm() {
                       onChange={(e) => setNewProducer({ ...newProducer, bi: e.target.value })}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <select
-                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      value={newProducer.type}
-                      onChange={(e) => setNewProducer({ ...newProducer, type: e.target.value })}
-                    >
-                      <option value="">Tipo de Produtor</option>
-                      <option value="Florestal">Florestal</option>
-                      <option value="Agrícola">Agrícola</option>
-                    </select>
-                    
-                  </div>
+                  <select
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={newProducer.type}
+                    onChange={(e) => setNewProducer({ ...newProducer, type: e.target.value })}
+                  >
+                    <option value="">Tipo de Produtor</option>
+                    <option value="Florestal">Florestal</option>
+                    <option value="Agrícola">Agrícola</option>
+                  </select>
                  
                   <button
                     type="button"
@@ -285,7 +282,6 @@ export default function BatchForm() {
                         />
                         <div>
                           <h3 className="font-medium text-gray-900">{producer.name}</h3>
-                          <p className="text-sm text-gray-600">{producer.location}</p>
                           <p className="text-xs text-gray-500">BI: {producer.bi} • {producer.type}</p>
                         </div>
                       </div>
