@@ -150,6 +150,14 @@ export default function PublicBatch() {
                   <span className="font-semibold">{batch.totalQuantity} toneladas</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Origem</span>
+                  <span className="font-semibold text-sm">{batch.origin}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Destino</span>
+                  <span className="font-semibold text-sm">{batch.destination}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Produtores</span>
                   <span className="font-semibold">{batch.producers?.length || 0} agregados</span>
                 </div>
