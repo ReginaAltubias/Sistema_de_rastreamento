@@ -225,7 +225,6 @@ export default function BatchTracking() {
   }
 
   const qrData = JSON.stringify({
-    url: `${window.location.origin}/public/batch/${batch.id}`,
     lote: batch.name,
     codigo: batch.batchCode,
     origem: batch.origin,
@@ -233,7 +232,9 @@ export default function BatchTracking() {
     transporte: batch.modoTransporte,
     quantidade: `${batch.totalQuantity}t`,
     status: batch.status,
-    produtores: batch.producers?.length || 0
+    produtores: batch.producers?.length || 0,
+    criado: new Date(batch.createdAt).toLocaleDateString(),
+    url: `${window.location.origin}/public/batch/${batch.id}`
   })
   const mapCenter = batch.checkpoints && batch.checkpoints.length > 0 
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
@@ -429,16 +430,22 @@ export default function BatchTracking() {
             <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
               <h3 className="text-lg font-semibold mb-4 flex items-center justify-center">
                 <QrCode className="w-5 h-5 mr-2 text-indigo-600" />
-                QR Code Público
+                Informações do Lote
               </h3>
               <div className="flex justify-center mb-4">
                 <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-200">
                   <QRCode value={qrData} size={128} />
                 </div>
               </div>
-              <p className="text-sm text-gray-600">
-                Escaneie para acesso público ao lote
+              <p className="text-sm text-gray-600 mb-4">
+                Escaneie para ver informações do lote
               </p>
+              <button
+                onClick={() => window.open(`/public/batch/${batch.id}`, '_blank')}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+              >
+                Acesso Público
+              </button>
             </div>
           </div>
 

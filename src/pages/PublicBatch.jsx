@@ -70,7 +70,7 @@ export default function PublicBatch() {
     )
   }
 
-  const mapCenter = batch.checkpoints.length > 0 
+  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0 
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
     : [0, 0]
 
@@ -151,7 +151,7 @@ export default function PublicBatch() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Produtores</span>
-                  <span className="font-semibold">{batch.producers.length} agregados</span>
+                  <span className="font-semibold">{batch.producers?.length || 0} agregados</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Data de Criação</span>
@@ -190,7 +190,7 @@ export default function PublicBatch() {
                 Produtores Agregados
               </h3>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {batch.producers.map((producer, index) => (
+                {batch.producers && batch.producers.map((producer, index) => (
                   <div key={producer.id} className="border border-gray-200 rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div>
