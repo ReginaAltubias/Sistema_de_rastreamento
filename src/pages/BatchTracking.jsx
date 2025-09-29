@@ -105,7 +105,7 @@ export default function BatchTracking() {
       alert('Faça login para selar o lote.')
       return
     }
-    
+
     const updatedBatch = {
       ...batch,
       sealed: true,
@@ -113,7 +113,7 @@ export default function BatchTracking() {
       sealedAt: new Date().toISOString(),
       status: 'Selado'
     }
-    
+
     const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
     const updatedDB = batchesDB.map(b => b.id === batch.id ? updatedBatch : b)
     localStorage.setItem('batchesDB', JSON.stringify(updatedDB))
@@ -140,17 +140,17 @@ export default function BatchTracking() {
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
       let locationDesc = checkpointData.location || 'Checkpoint manual'
-      
+
       // Tenta obter endereço, mas não falha se não conseguir
       if (!checkpointData.location) {
         try {
           const controller = new AbortController()
           setTimeout(() => controller.abort(), 3000) // 3s timeout
-          
+
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&addressdetails=1`, {
             signal: controller.signal
           })
-          
+
           if (res.ok) {
             const data = await res.json()
             const address = data.address || {}
@@ -225,7 +225,7 @@ export default function BatchTracking() {
   }
 
   const qrData = JSON.stringify({
-    lote: batch.name,
+    nome: batch.name,
     codigo: batch.batchCode,
     origem: batch.origin,
     destino: batch.destination,
@@ -233,11 +233,23 @@ export default function BatchTracking() {
     quantidade: `${batch.totalQuantity}t`,
     status: batch.status,
     produtores: batch.producers?.length || 0,
-    criado: new Date(batch.createdAt).toLocaleDateString(),
-    url: `${window.location.origin}/public/batch/${batch.id}`
+    criado: batch.createdAt ? new Date(batch.createdAt).toLocaleDateString() : '',
+    produtos: (() => {
+      if (!batch.producers || batch.producers.length === 0) return 'Nenhum produto'
+      const productTotals = batch.producers.reduce((acc, producer) => {
+        if (producer && producer.batchProducts) {
+          Object.entries(producer.batchProducts).forEach(([product, qty]) => {
+            acc[product] = (acc[product] || 0) + (qty || 0)
+          })
+        }
+        return acc
+      }, {})
+      return Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
+    })(),
+    link: `${window.location.origin}/public/batch/${batch.id}`
   })
-  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0 
-    ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
+  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0
+    ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng]
     : [0, 0]
 
   return (
@@ -260,7 +272,7 @@ export default function BatchTracking() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {!user ? (
                 <button onClick={login} className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
@@ -277,7 +289,7 @@ export default function BatchTracking() {
                   </button>
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/public/batch/${batch.id}`); alert('Link público copiado!') }}
                 className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -320,7 +332,7 @@ export default function BatchTracking() {
                       return entries.map(([product, qty]) => (
                         <div key={product} className="font-semibold text-sm">{product}: {qty.toFixed(1)}t</div>
                       ))
-                    })()} 
+                    })()}
                   </div>
                 </div>
                 <div className="flex justify-between">
@@ -394,7 +406,7 @@ export default function BatchTracking() {
                       </div>
                     </div>
                   </div>
-                ))  }
+                ))}
               </div>
             </div>
 
@@ -411,7 +423,7 @@ export default function BatchTracking() {
                     Selar Lote
                   </button>
                 )}
-                
+
                 <button
                   onClick={openCheckpointModal}
                   disabled={!batch.sealed}
@@ -430,7 +442,7 @@ export default function BatchTracking() {
             <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
               <h3 className="text-lg font-semibold mb-4 flex items-center justify-center">
                 <QrCode className="w-5 h-5 mr-2 text-indigo-600" />
-                Informações do Lote
+                QR Code do Lote
               </h3>
               <div className="flex justify-center mb-4">
                 <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-200">
@@ -438,13 +450,21 @@ export default function BatchTracking() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Escaneie para ver informações do lote
+                Escaneie para identificar o lote
               </p>
               <button
-                onClick={() => window.open(`/public/batch/${batch.id}`, '_blank')}
+                onClick={() => {
+                  const canvas = document.querySelector('canvas')
+                  if (canvas) {
+                    const link = document.createElement('a')
+                    link.download = `QR-${batch.batchCode}.png`
+                    link.href = canvas.toDataURL()
+                    link.click()
+                  }
+                }}
                 className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
               >
-                Acesso Público
+                Baixar QR Code
               </button>
             </div>
           </div>
@@ -462,7 +482,7 @@ export default function BatchTracking() {
               <div className="h-96">
                 <MapContainer center={mapCenter} zoom={4} className="h-full w-full">
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  
+
                   {/* Rota planejada */}
                   {route.length > 0 && (
                     <Polyline
@@ -486,7 +506,7 @@ export default function BatchTracking() {
                       <Popup>Destino: {batch.destination}</Popup>
                     </CircleMarker>
                   )}
-                  
+
                   {batch.checkpoints && batch.checkpoints.map((checkpoint, index) => (
                     <Marker key={index} position={[checkpoint.lat, checkpoint.lng]}>
                       <Popup>
@@ -519,30 +539,30 @@ export default function BatchTracking() {
 
         {/* Modal Checkpoint */}
         {showCheckpointModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-semibold mb-4">Registrar Checkpoint</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Transporte</label>
-                  <select 
+                  <select
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     value={checkpointData.transport}
-                    onChange={(e) => setCheckpointData({...checkpointData, transport: e.target.value})}
+                    onChange={(e) => setCheckpointData({ ...checkpointData, transport: e.target.value })}
                   >
                     <option value="Camião">🚚 Camião</option>
                     <option value="Navio">🚢 Navio</option>
                     <option value="Avião">✈️ Avião</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select 
+                  <select
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     value={checkpointData.status}
-                    onChange={(e) => setCheckpointData({...checkpointData, status: e.target.value})}
+                    onChange={(e) => setCheckpointData({ ...checkpointData, status: e.target.value })}
                   >
                     <option value="Em trânsito">Em trânsito</option>
                     <option value="Armazém">Armazém</option>
@@ -551,18 +571,18 @@ export default function BatchTracking() {
                     <option value="Entregue">Entregue</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Local/Posto de controle</label>
-                  <input 
+                  <input
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="Ex: Porto de Luanda"
                     value={checkpointData.location}
-                    onChange={(e) => setCheckpointData({...checkpointData, location: e.target.value})}
+                    onChange={(e) => setCheckpointData({ ...checkpointData, location: e.target.value })}
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowCheckpointModal(false)}
