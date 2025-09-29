@@ -4,20 +4,21 @@ import { Package, Users, Plus, X } from 'lucide-react'
 
 export default function BatchForm() {
   const [batchName, setBatchName] = useState('')
-  const [product, setProduct] = useState('')
+
   const [totalQuantity, setTotalQuantity] = useState('')
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
   const [modoTransporte, setModoTransporte] = useState('Carro')
   const [selectedProducers, setSelectedProducers] = useState([])
+  const [producerProducts, setProducerProducts] = useState({})
   const [producers, setProducers] = useState([])
-  const [newProducer, setNewProducer] = useState({ 
-    name: '', 
-    bi: '', 
-    type: '', 
+  const [newProducer, setNewProducer] = useState({
+    name: '',
+    bi: '',
+    type: '',
     products: {},
-    location: '', 
-    quantity: '' 
+    location: '',
+    quantity: ''
   })
   const [showAddProducer, setShowAddProducer] = useState(false)
   const navigate = useNavigate()
@@ -30,15 +31,15 @@ export default function BatchForm() {
   function addProducer() {
     if (!newProducer.name || !newProducer.bi || !newProducer.type || !newProducer.location) return
     if (Object.keys(newProducer.products).length === 0) return
-    
+
     const totalQuantity = Object.values(newProducer.products).reduce((sum, qty) => sum + parseFloat(qty || 0), 0)
-    
+
     const producer = {
       id: Date.now().toString(),
       ...newProducer,
       quantity: totalQuantity
     }
-    
+
     const updatedProducers = [...producers, producer]
     setProducers(updatedProducers)
     localStorage.setItem('producersDB', JSON.stringify(updatedProducers))
@@ -50,9 +51,26 @@ export default function BatchForm() {
     const isSelected = selectedProducers.find(p => p.id === producer.id)
     if (isSelected) {
       setSelectedProducers(selectedProducers.filter(p => p.id !== producer.id))
+      const newProducts = { ...producerProducts }
+      delete newProducts[producer.id]
+      setProducerProducts(newProducts)
     } else {
       setSelectedProducers([...selectedProducers, producer])
+      setProducerProducts({ ...producerProducts, [producer.id]: {} })
     }
+  }
+
+  function updateProducerProduct(producerId, productType, quantity) {
+    const newProducts = { ...producerProducts }
+    if (!newProducts[producerId]) newProducts[producerId] = {}
+
+    if (quantity === '') {
+      delete newProducts[producerId][productType]
+    } else {
+      newProducts[producerId][productType] = parseFloat(quantity) || 0
+    }
+
+    setProducerProducts(newProducts)
   }
 
   function generateBatchCode() {
@@ -76,15 +94,23 @@ export default function BatchForm() {
     }
 
     const batchCode = generateBatchCode()
-    const producersWithSubCodes = generateSubCodes(batchCode, selectedProducers)
-    const calculatedTotal = selectedProducers.reduce((sum, p) => sum + p.quantity, 0)
+    const calculatedTotal = Object.values(producerProducts).reduce((sum, products) => {
+      return sum + Object.values(products).reduce((pSum, qty) => pSum + qty, 0)
+    }, 0)
+
+    const producersWithProducts = selectedProducers.map(producer => ({
+      ...producer,
+      batchProducts: producerProducts[producer.id] || {},
+      batchQuantity: Object.values(producerProducts[producer.id] || {}).reduce((sum, qty) => sum + qty, 0)
+    }))
+    
+    const producersWithSubCodes = generateSubCodes(batchCode, producersWithProducts)
 
     const batch = {
       id: Date.now().toString(),
       batchCode,
       name: batchName,
-      product,
-      totalQuantity: totalQuantity || calculatedTotal,
+      totalQuantity: calculatedTotal,
       origin,
       destination,
       modoTransporte,
@@ -98,11 +124,13 @@ export default function BatchForm() {
     const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
     batchesDB.push(batch)
     localStorage.setItem('batchesDB', JSON.stringify(batchesDB))
-    
+
     navigate(`/batch/${batch.id}`)
   }
 
-  const totalSelected = selectedProducers.reduce((sum, p) => sum + p.quantity, 0)
+  const totalSelected = Object.values(producerProducts).reduce((sum, products) => {
+    return sum + Object.values(products).reduce((pSum, qty) => pSum + qty, 0)
+  }, 0)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -130,21 +158,7 @@ export default function BatchForm() {
                   placeholder="Ex: Lote Café Premium Janeiro 2025"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Produto</label>
-                <select
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={product}
-                  onChange={(e) => setProduct(e.target.value)}
-                >
-                  <option value="">Selecione o produto</option>
-                  <option value="Café">☕ Café</option>
-                  <option value="Cacau">🍫 Cacau</option>
-                  <option value="Madeira">🌳 Madeira</option>
-                  <option value="Outros">📦 Outros</option>
-                </select>
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quantidade Total (toneladas)
@@ -152,23 +166,22 @@ export default function BatchForm() {
                 <input
                   type="number"
                   step="0.1"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={totalQuantity}
-                  onChange={(e) => setTotalQuantity(e.target.value)}
-                  placeholder={`Auto: ${totalSelected.toFixed(1)}t`}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
+                  value={totalSelected.toFixed(1)}
+                  readOnly
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Origem (ex: Luanda)</label>
-                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={origin} onChange={(e)=>setOrigin(e.target.value)} />
+                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={origin} onChange={(e) => setOrigin(e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Destino (ex: Lisboa)</label>
-                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={destination} onChange={(e)=>setDestination(e.target.value)} />
+                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={destination} onChange={(e) => setDestination(e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Modo de Transporte</label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={modoTransporte} onChange={(e)=>setModoTransporte(e.target.value)}>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={modoTransporte} onChange={(e) => setModoTransporte(e.target.value)}>
                   <option value="Carro">🚗 Carro</option>
                   <option value="Avião">✈️ Avião</option>
                   <option value="Navio">🚢 Navio</option>
@@ -213,20 +226,20 @@ export default function BatchForm() {
                       className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Nome do produtor"
                       value={newProducer.name}
-                      onChange={(e) => setNewProducer({...newProducer, name: e.target.value})}
+                      onChange={(e) => setNewProducer({ ...newProducer, name: e.target.value })}
                     />
                     <input
                       className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="BI"
                       value={newProducer.bi}
-                      onChange={(e) => setNewProducer({...newProducer, bi: e.target.value})}
+                      onChange={(e) => setNewProducer({ ...newProducer, bi: e.target.value })}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <select
                       className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       value={newProducer.type}
-                      onChange={(e) => setNewProducer({...newProducer, type: e.target.value})}
+                      onChange={(e) => setNewProducer({ ...newProducer, type: e.target.value })}
                     >
                       <option value="">Tipo de Produtor</option>
                       <option value="Florestal">Florestal</option>
@@ -236,47 +249,48 @@ export default function BatchForm() {
                       className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Localização"
                       value={newProducer.location}
-                      onChange={(e) => setNewProducer({...newProducer, location: e.target.value})}
+                      onChange={(e) => setNewProducer({ ...newProducer, location: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Produtos:</label>
                     <div className="space-y-2">
-                      {['Café', 'Cacau', 'Madeira'].map(productType => (
-                        <div key={productType} className="flex items-center gap-3">
-                          <label className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={!!newProducer.products[productType]}
-                              onChange={(e) => {
-                                const products = {...newProducer.products}
-                                if (e.target.checked) {
-                                  products[productType] = ''
-                                } else {
-                                  delete products[productType]
-                                }
-                                setNewProducer({...newProducer, products})
-                              }}
-                              className="mr-2"
-                            />
-                            {productType}
-                          </label>
-                          {newProducer.products[productType] !== undefined && (
-                            <input
-                              type="number"
-                              step="0.1"
-                              className="w-24 border border-gray-300 rounded px-2 py-1"
-                              placeholder="Qtd (t)"
-                              value={newProducer.products[productType]}
-                              onChange={(e) => {
-                                const products = {...newProducer.products}
-                                products[productType] = e.target.value
-                                setNewProducer({...newProducer, products})
-                              }}
-                            />
-                          )}
-                        </div>
-                      ))}
+                      {['Café', 'Cacau', 'Madeira'].map(productType => {
+                        const inputId = `prod-${producer.id}-${productType}`;
+                        return (
+                          <div key={productType} className="flex items-center gap-3">
+                            <div className="flex items-center min-w-[80px]">
+                              <label htmlFor={inputId} className="flex items-center cursor-pointer">
+                                <input
+                                  id={inputId}
+                                  type="checkbox"
+                                  checked={producerBatchProducts[productType] !== undefined}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      updateProducerProduct(producer.id, productType, '0') // Ativa e mostra campo
+                                    } else {
+                                      updateProducerProduct(producer.id, productType, '') // Remove produto
+                                    }
+                                  }}
+                                  className="mr-2"
+                                />
+                                <span>{productType}</span>
+                              </label>
+                            </div>
+                            {producerBatchProducts[productType] !== undefined && (
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                                placeholder="Qtd (t)"
+                                value={producerBatchProducts[productType] || ''}
+                                onChange={(e) => updateProducerProduct(producer.id, productType, e.target.value)}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                   <button
@@ -301,34 +315,67 @@ export default function BatchForm() {
               ) : (
                 producers.map(producer => {
                   const isSelected = selectedProducers.find(p => p.id === producer.id)
+                  const producerBatchProducts = producerProducts[producer.id] || {}
+                  const batchTotal = Object.values(producerBatchProducts).reduce((sum, qty) => sum + qty, 0)
+
                   return (
-                    <div
-                      key={producer.id}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                        isSelected 
-                          ? 'border-indigo-500 bg-indigo-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => toggleProducer(producer)}
-                    >
-                      <div className="flex items-center justify-between">
+                    <div key={producer.id} className={`border-2 rounded-lg p-4 transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                      }`}>
+                      <div className="flex items-center gap-3" onClick={() => toggleProducer(producer)}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleProducer(producer)}
+                          className="w-4 h-4"
+                        />
                         <div>
                           <h3 className="font-medium text-gray-900">{producer.name}</h3>
                           <p className="text-sm text-gray-600">{producer.location}</p>
                           <p className="text-xs text-gray-500">BI: {producer.bi} • {producer.type}</p>
-                          {producer.products && (
-                            <p className="text-xs text-blue-600">
-                              {Object.entries(producer.products).map(([prod, qty]) => `${prod}: ${qty}t`).join(', ')}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-gray-900">{producer.quantity}t</div>
-                          {isSelected && (
-                            <div className="text-xs text-indigo-600 font-medium">SELECIONADO</div>
-                          )}
                         </div>
                       </div>
+
+                      {isSelected && (
+                        <div className="border-t pt-3 space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Produtos para o lote:</label>
+                          {['Café', 'Cacau', 'Madeira'].map(productType => {
+                            const inputId = `prod-${producer.id}-${productType}`;
+                            return (
+                              <div key={productType} className="flex items-center gap-3">
+                                <div className="flex items-center min-w-[80px]">
+                                  <label htmlFor={inputId} className="flex items-center cursor-pointer">
+                                    <input
+                                      id={inputId}
+                                      type="checkbox"
+                                      checked={producerBatchProducts[productType] !== undefined}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          updateProducerProduct(producer.id, productType, '0')
+                                        } else {
+                                          updateProducerProduct(producer.id, productType, '')
+                                        }
+                                      }}
+                                      className="mr-2"
+                                    />
+                                    <span>{productType}</span>
+                                  </label>
+                                </div>
+                                {producerBatchProducts[productType] !== undefined && (
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                                    placeholder="Qtd (t)"
+                                    value={producerBatchProducts[productType] ?? ''}
+                                    onChange={(e) => updateProducerProduct(producer.id, productType, e.target.value)}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )
                 })
@@ -337,14 +384,27 @@ export default function BatchForm() {
 
             {selectedProducers.length > 0 && (
               <div className="mt-4 p-4 bg-indigo-50 rounded-lg">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-2">
                   <span className="font-medium text-indigo-900">
-                    Total Selecionado: {selectedProducers.length} produtores
+                    {selectedProducers.length} produtores selecionados
                   </span>
                   <span className="font-bold text-indigo-900">
                     {totalSelected.toFixed(1)} toneladas
                   </span>
                 </div>
+                {totalSelected > 0 && (
+                  <div className="text-sm text-indigo-700">
+                    {(() => {
+                      const productTotals = Object.values(producerProducts).reduce((acc, products) => {
+                        Object.entries(products).forEach(([product, qty]) => {
+                          acc[product] = (acc[product] || 0) + qty
+                        })
+                        return acc
+                      }, {})
+                      return Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(' • ')
+                    })()}
+                  </div>
+                )}
               </div>
             )}
           </div>

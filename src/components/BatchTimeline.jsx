@@ -13,11 +13,22 @@ export default function BatchTimeline({ batch }) {
   const events = []
 
   // Evento de criação
+  const productTotals = batch.producers.reduce((acc, producer) => {
+    if (producer.batchProducts) {
+      Object.entries(producer.batchProducts).forEach(([product, qty]) => {
+        acc[product] = (acc[product] || 0) + qty
+      })
+    }
+    return acc
+  }, {})
+  
+  const productsText = Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
+  
   events.push({
     type: 'created',
     timestamp: batch.createdAt,
     title: 'Lote Criado',
-    description: `${batch.producers.length} produtores agregados • ${batch.totalQuantity}t de ${batch.product}`,
+    description: `${batch.producers.length} produtores agregados • ${productsText}`,
     icon: <Package className="w-4 h-4" />,
     color: 'indigo'
   })

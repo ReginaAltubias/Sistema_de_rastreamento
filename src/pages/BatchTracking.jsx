@@ -22,6 +22,12 @@ export default function BatchTracking() {
   const [route, setRoute] = useState([])
   const [originCoords, setOriginCoords] = useState(null)
   const [destCoords, setDestCoords] = useState(null)
+  const [showCheckpointModal, setShowCheckpointModal] = useState(false)
+  const [checkpointData, setCheckpointData] = useState({
+    transport: 'Camião',
+    status: 'Em trânsito',
+    location: ''
+  })
 
   useEffect(() => {
     const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
@@ -34,12 +40,22 @@ export default function BatchTracking() {
 
   async function fetchRoute(batch) {
     try {
-      const orRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.origin)}`)
+      // Timeout para evitar travamento
+      const fetchWithTimeout = (url, timeout = 5000) => {
+        return Promise.race([
+          fetch(url),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
+        ])
+      }
+
+      const orRes = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.origin)}`)
+      if (!orRes.ok) throw new Error('Erro na API de origem')
       const orJson = await orRes.json()
       if (!orJson || orJson.length === 0) return
       const [olat, olng] = [parseFloat(orJson[0].lat), parseFloat(orJson[0].lon)]
 
-      const deRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.destination)}`)
+      const deRes = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.destination)}`)
+      if (!deRes.ok) throw new Error('Erro na API de destino')
       const deJson = await deRes.json()
       if (!deJson || deJson.length === 0) return
       const [dlat, dlng] = [parseFloat(deJson[0].lat), parseFloat(deJson[0].lon)]
@@ -50,17 +66,24 @@ export default function BatchTracking() {
       if (batch.modoTransporte === 'Avião') {
         setRoute([[olat, olng], [dlat, dlng]])
       } else {
-        const osrm = await fetch(`https://router.project-osrm.org/route/v1/driving/${olng},${olat};${dlng},${dlat}?overview=full&geometries=geojson`)
-        const osrmJson = await osrm.json()
-        if (osrmJson.routes && osrmJson.routes.length > 0) {
-          const coords = osrmJson.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
-          setRoute(coords)
-        } else {
+        try {
+          const osrm = await fetchWithTimeout(`https://router.project-osrm.org/route/v1/driving/${olng},${olat};${dlng},${dlat}?overview=full&geometries=geojson`)
+          if (!osrm.ok) throw new Error('Erro na API de rota')
+          const osrmJson = await osrm.json()
+          if (osrmJson.routes && osrmJson.routes.length > 0) {
+            const coords = osrmJson.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
+            setRoute(coords)
+          } else {
+            setRoute([[olat, olng], [dlat, dlng]])
+          }
+        } catch {
+          // Fallback para linha reta se OSRM falhar
           setRoute([[olat, olng], [dlat, dlng]])
         }
       }
     } catch (err) {
       console.error('Erro ao buscar rota:', err)
+      // Continua sem rota se APIs falharem
     }
   }
 
@@ -97,52 +120,74 @@ export default function BatchTracking() {
     setBatch(updatedBatch)
   }
 
-  async function addCheckpoint() {
+  function openCheckpointModal() {
     if (!user) {
       alert('Faça login para registrar checkpoint.')
       return
     }
+    if (!batch.sealed) {
+      alert('O lote deve estar selado para registrar checkpoints.')
+      return
+    }
+    setShowCheckpointModal(true)
+  }
+
+  async function addCheckpoint() {
     if (!navigator.geolocation) {
       alert('Geolocalização não suportada')
       return
     }
 
-    const transportSelect = document.getElementById('transportSelect')
-    const transport = transportSelect?.value || 'Camião'
-    const status = prompt('Status:', 'Em trânsito') || 'Em trânsito'
-    const location = prompt('Local/Posto de controle:', '') || ''
-
     navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&addressdetails=1`)
-        const data = await res.json()
-        const address = data.address || {}
-        const provincia = address.state || address.province || ''
-        const municipio = address.city || address.town || address.village || address.municipality || ''
-
-        const checkpoint = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          timestamp: new Date().toLocaleString(),
-          desc: location || `${provincia}${municipio ? ', ' + municipio : ''}` || 'Checkpoint automático',
-          operator: user,
-          transport,
-          status
+      let locationDesc = checkpointData.location || 'Checkpoint manual'
+      
+      // Tenta obter endereço, mas não falha se não conseguir
+      if (!checkpointData.location) {
+        try {
+          const controller = new AbortController()
+          setTimeout(() => controller.abort(), 3000) // 3s timeout
+          
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&addressdetails=1`, {
+            signal: controller.signal
+          })
+          
+          if (res.ok) {
+            const data = await res.json()
+            const address = data.address || {}
+            const provincia = address.state || address.province || ''
+            const municipio = address.city || address.town || address.village || address.municipality || ''
+            locationDesc = `${provincia}${municipio ? ', ' + municipio : ''}` || 'Checkpoint automático'
+          }
+        } catch {
+          // Ignora erro de API e usa localização padrão
+          locationDesc = 'Checkpoint automático'
         }
-
-        const updatedBatch = {
-          ...batch,
-          checkpoints: [...batch.checkpoints, checkpoint],
-          status: 'Em trânsito'
-        }
-
-        const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
-        const updatedDB = batchesDB.map(b => b.id === batch.id ? updatedBatch : b)
-        localStorage.setItem('batchesDB', JSON.stringify(updatedDB))
-        setBatch(updatedBatch)
-      } catch (err) {
-        console.error('Erro ao obter localização:', err)
       }
+
+      const checkpoint = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        timestamp: new Date().toLocaleString(),
+        desc: locationDesc,
+        operator: user,
+        transport: checkpointData.transport,
+        status: checkpointData.status
+      }
+
+      const updatedBatch = {
+        ...batch,
+        checkpoints: [...batch.checkpoints, checkpoint],
+        status: 'Em trânsito'
+      }
+
+      const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
+      const updatedDB = batchesDB.map(b => b.id === batch.id ? updatedBatch : b)
+      localStorage.setItem('batchesDB', JSON.stringify(updatedDB))
+      setBatch(updatedBatch)
+      setShowCheckpointModal(false)
+      setCheckpointData({ transport: 'Camião', status: 'Em trânsito', location: '' })
+    }, (error) => {
+      alert('Erro ao obter localização: ' + error.message)
     })
   }
 
@@ -179,7 +224,17 @@ export default function BatchTracking() {
     )
   }
 
-  const qrData = `${window.location.origin}/public/batch/${batch.id}`
+  const qrData = JSON.stringify({
+    url: `${window.location.origin}/public/batch/${batch.id}`,
+    lote: batch.name,
+    codigo: batch.batchCode,
+    origem: batch.origin,
+    destino: batch.destination,
+    transporte: batch.modoTransporte,
+    quantidade: `${batch.totalQuantity}t`,
+    status: batch.status,
+    produtores: batch.producers.length
+  })
   const mapCenter = batch.checkpoints.length > 0 
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
     : [0, 0]
@@ -222,7 +277,7 @@ export default function BatchTracking() {
                 </div>
               )}
               <button 
-                onClick={() => { navigator.clipboard?.writeText(qrData); alert('Link público copiado!') }}
+                onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/public/batch/${batch.id}`); alert('Link público copiado!') }}
                 className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <Copy className="w-4 h-4 mr-2" />
@@ -243,8 +298,22 @@ export default function BatchTracking() {
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Produto</span>
-                  <span className="font-semibold">{batch.product}</span>
+                  <span className="text-gray-600">Produtos</span>
+                  <div className="text-right">
+                    {(() => {
+                      const productTotals = batch.producers.reduce((acc, producer) => {
+                        if (producer.batchProducts) {
+                          Object.entries(producer.batchProducts).forEach(([product, qty]) => {
+                            acc[product] = (acc[product] || 0) + qty
+                          })
+                        }
+                        return acc
+                      }, {})
+                      return Object.entries(productTotals).map(([product, qty]) => (
+                        <div key={product} className="font-semibold text-sm">{product}: {qty.toFixed(1)}t</div>
+                      ))
+                    })()} 
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Quantidade Total</span>
@@ -328,18 +397,16 @@ export default function BatchTracking() {
                 )}
                 
                 <button
-                  onClick={addCheckpoint}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  onClick={openCheckpointModal}
+                  disabled={!batch.sealed}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <MapPin className="w-5 h-5 mr-2" />
                   Registrar Checkpoint
                 </button>
-                
-                <select id="transportSelect" className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="Camião">🚚 Camião</option>
-                  <option value="Navio">🚢 Navio</option>
-                  <option value="Avião">✈️ Avião</option>
-                </select>
+                {!batch.sealed && (
+                  <p className="text-xs text-gray-500 text-center">Lote deve estar selado para registrar checkpoints</p>
+                )}
               </div>
             </div>
 
@@ -427,6 +494,70 @@ export default function BatchTracking() {
             </div>
           </div>
         </div>
+
+        {/* Modal Checkpoint */}
+        {showCheckpointModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold mb-4">Registrar Checkpoint</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Transporte</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    value={checkpointData.transport}
+                    onChange={(e) => setCheckpointData({...checkpointData, transport: e.target.value})}
+                  >
+                    <option value="Camião">🚚 Camião</option>
+                    <option value="Navio">🚢 Navio</option>
+                    <option value="Avião">✈️ Avião</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    value={checkpointData.status}
+                    onChange={(e) => setCheckpointData({...checkpointData, status: e.target.value})}
+                  >
+                    <option value="Em trânsito">Em trânsito</option>
+                    <option value="Armazém">Armazém</option>
+                    <option value="Porto">Porto</option>
+                    <option value="Alfândega">Alfândega</option>
+                    <option value="Entregue">Entregue</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Local/Posto de controle</label>
+                  <input 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="Ex: Porto de Luanda"
+                    value={checkpointData.location}
+                    onChange={(e) => setCheckpointData({...checkpointData, location: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowCheckpointModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={addCheckpoint}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Registrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

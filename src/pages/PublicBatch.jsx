@@ -128,8 +128,22 @@ export default function PublicBatch() {
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Produto</span>
-                  <span className="font-semibold">{batch.product}</span>
+                  <span className="text-gray-600">Produtos</span>
+                  <div className="text-right">
+                    {(() => {
+                      const productTotals = batch.producers.reduce((acc, producer) => {
+                        if (producer.batchProducts) {
+                          Object.entries(producer.batchProducts).forEach(([product, qty]) => {
+                            acc[product] = (acc[product] || 0) + qty
+                          })
+                        }
+                        return acc
+                      }, {})
+                      return Object.entries(productTotals).map(([product, qty]) => (
+                        <div key={product} className="font-semibold text-sm">{product}: {qty.toFixed(1)}t</div>
+                      ))
+                    })()} 
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Quantidade Total</span>
