@@ -176,7 +176,7 @@ export default function BatchTracking() {
 
       const updatedBatch = {
         ...batch,
-        checkpoints: [...batch.checkpoints, checkpoint],
+        checkpoints: [...(batch.checkpoints || []), checkpoint],
         status: 'Em trânsito'
       }
 
@@ -233,9 +233,9 @@ export default function BatchTracking() {
     transporte: batch.modoTransporte,
     quantidade: `${batch.totalQuantity}t`,
     status: batch.status,
-    produtores: batch.producers.length
+    produtores: batch.producers?.length || 0
   })
-  const mapCenter = batch.checkpoints.length > 0 
+  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0 
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
     : [0, 0]
 
@@ -301,15 +301,22 @@ export default function BatchTracking() {
                   <span className="text-gray-600">Produtos</span>
                   <div className="text-right">
                     {(() => {
+                      if (!batch.producers || batch.producers.length === 0) {
+                        return <div className="font-semibold text-sm">Nenhum produto</div>
+                      }
                       const productTotals = batch.producers.reduce((acc, producer) => {
-                        if (producer.batchProducts) {
+                        if (producer && producer.batchProducts) {
                           Object.entries(producer.batchProducts).forEach(([product, qty]) => {
-                            acc[product] = (acc[product] || 0) + qty
+                            acc[product] = (acc[product] || 0) + (qty || 0)
                           })
                         }
                         return acc
                       }, {})
-                      return Object.entries(productTotals).map(([product, qty]) => (
+                      const entries = Object.entries(productTotals)
+                      if (entries.length === 0) {
+                        return <div className="font-semibold text-sm">Nenhum produto</div>
+                      }
+                      return entries.map(([product, qty]) => (
                         <div key={product} className="font-semibold text-sm">{product}: {qty.toFixed(1)}t</div>
                       ))
                     })()} 
@@ -333,7 +340,7 @@ export default function BatchTracking() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Produtores</span>
-                  <span className="font-semibold">{batch.producers.length}</span>
+                  <span className="font-semibold">{batch.producers?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Criado em</span>
@@ -363,18 +370,18 @@ export default function BatchTracking() {
                 Produtores Agregados
               </h3>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {batch.producers.map((producer, index) => (
-                  <div key={producer.id} className="border border-gray-200 rounded-lg p-3">
+                {batch.producers && batch.producers.map((producer, index) => (
+                  <div key={producer.id || index} className="border border-gray-200 rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium text-gray-900">{producer.name}</h4>
-                        <p className="text-sm text-gray-600">{producer.location}</p>
+                        <h4 className="font-medium text-gray-900">{producer.name || 'Produtor'}</h4>
+                        <p className="text-sm text-gray-600">{producer.location || 'Localização não informada'}</p>
                         <p className="text-xs text-indigo-600 font-mono">
-                          Subcódigo: {producer.subCode}
+                          Subcódigo: {producer.subCode || 'N/A'}
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">{producer.quantity}t</div>
+                        <div className="font-semibold">{producer.quantity || 0}t</div>
                       </div>
                     </div>
                   </div>
@@ -465,7 +472,7 @@ export default function BatchTracking() {
                     </CircleMarker>
                   )}
                   
-                  {batch.checkpoints.map((checkpoint, index) => (
+                  {batch.checkpoints && batch.checkpoints.map((checkpoint, index) => (
                     <Marker key={index} position={[checkpoint.lat, checkpoint.lng]}>
                       <Popup>
                         <div className="min-w-[200px]">
