@@ -245,54 +245,9 @@ export default function BatchForm() {
                       <option value="Florestal">Florestal</option>
                       <option value="Agrícola">Agrícola</option>
                     </select>
-                    <input
-                      className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Localização"
-                      value={newProducer.location}
-                      onChange={(e) => setNewProducer({ ...newProducer, location: e.target.value })}
-                    />
+                    
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Produtos:</label>
-                    <div className="space-y-2">
-                      {['Café', 'Cacau', 'Madeira'].map(productType => {
-                        const inputId = `prod-${producer.id}-${productType}`;
-                        return (
-                          <div key={productType} className="flex items-center gap-3">
-                            <div className="flex items-center min-w-[80px]">
-                              <label htmlFor={inputId} className="flex items-center cursor-pointer">
-                                <input
-                                  id={inputId}
-                                  type="checkbox"
-                                  checked={producerBatchProducts[productType] !== undefined}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      updateProducerProduct(producer.id, productType, '0') // Ativa e mostra campo
-                                    } else {
-                                      updateProducerProduct(producer.id, productType, '') // Remove produto
-                                    }
-                                  }}
-                                  className="mr-2"
-                                />
-                                <span>{productType}</span>
-                              </label>
-                            </div>
-                            {producerBatchProducts[productType] !== undefined && (
-                              <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
-                                placeholder="Qtd (t)"
-                                value={producerBatchProducts[productType] || ''}
-                                onChange={(e) => updateProducerProduct(producer.id, productType, e.target.value)}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                 
                   <button
                     type="button"
                     onClick={addProducer}
