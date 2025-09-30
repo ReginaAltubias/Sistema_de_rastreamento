@@ -177,7 +177,7 @@ export default function BatchTracking() {
       const updatedBatch = {
         ...batch,
         checkpoints: [...(batch.checkpoints || []), checkpoint],
-        status: 'Em trânsito'
+        status: checkpointData.status === 'Entregue' ? 'Entregue' : 'Em trânsito'
       }
 
       const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
@@ -226,14 +226,9 @@ export default function BatchTracking() {
 
   const qrData = JSON.stringify({
     nome: batch.name,
-    codigo: batch.batchCode,
     origem: batch.origin,
     destino: batch.destination,
-    transporte: batch.modoTransporte,
     quantidade: `${batch.totalQuantity}t`,
-    status: batch.status,
-    produtores: batch.producers?.length || 0,
-    criado: batch.createdAt ? new Date(batch.createdAt).toLocaleDateString() : '',
     produtos: (() => {
       if (!batch.producers || batch.producers.length === 0) return 'Nenhum produto'
       const productTotals = batch.producers.reduce((acc, producer) => {
@@ -246,8 +241,11 @@ export default function BatchTracking() {
       }, {})
       return Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
     })(),
-    link: <button onclick="window.open('http://localhost/public/batch/1', '_blank')">Portal Público</button>
-  }, null, 2).replace(/\"([^(\")"]+)\":/g,"$1:") // remove aspas das chaves
+    ultimoCheckpoint: batch.checkpoints && batch.checkpoints.length > 0 
+      ? `${batch.checkpoints[batch.checkpoints.length - 1].desc} `
+      : 'Nenhum checkpoint registrado',
+    link: `${window.location.origin}/public/batch/${batch.id}`
+  }, null, 2).replace(/\"([^ (\")"]+)\":/g,"$1:") 
   const mapCenter = batch.checkpoints && batch.checkpoints.length > 0
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng]
     : [0, 0]

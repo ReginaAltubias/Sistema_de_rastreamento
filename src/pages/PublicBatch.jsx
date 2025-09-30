@@ -17,6 +17,9 @@ export default function PublicBatch() {
   const { id } = useParams()
   const [batch, setBatch] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [route, setRoute] = useState([])
+  const [originCoords, setOriginCoords] = useState(null)
+  const [destCoords, setDestCoords] = useState(null)
 
   useEffect(() => {
     // Simula busca em API pública
@@ -70,8 +73,8 @@ export default function PublicBatch() {
     )
   }
 
-  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0 
-    ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng] 
+  const mapCenter = batch.checkpoints && batch.checkpoints.length > 0
+    ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng]
     : [0, 0]
 
   return (
@@ -109,7 +112,7 @@ export default function PublicBatch() {
                 </div>
               </div>
             </div>
-            
+
             <div className="text-right">
               <div className="text-2xl font-bold text-indigo-600">{batch.totalQuantity}t</div>
               <div className="text-sm text-gray-600">{batch.product}</div>
@@ -142,7 +145,7 @@ export default function PublicBatch() {
                       return Object.entries(productTotals).map(([product, qty]) => (
                         <div key={product} className="font-semibold text-sm">{product}: {qty.toFixed(1)}t</div>
                       ))
-                    })()} 
+                    })()}
                   </div>
                 </div>
                 <div className="flex justify-between">
@@ -233,24 +236,46 @@ export default function PublicBatch() {
               </div>
               <div className="h-96">
                 {batch.checkpoints.length > 0 ? (
-                  <MapContainer center={mapCenter} zoom={6} className="h-full w-full">
+                  <MapContainer center={mapCenter} zoom={4} className="h-full w-full">
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    
-                    {batch.checkpoints.map((checkpoint, index) => (
+
+                    {/* Rota planejada */}
+                    {route.length > 0 && (
+                      <Polyline
+                        positions={route}
+                        pathOptions={{
+                          color: batch.modoTransporte === 'Avião' ? 'blue' : 'green',
+                          weight: 4,
+                          dashArray: '8, 8'
+                        }}
+                      />
+                    )}
+
+                    {/* Marcadores origem/destino */}
+                    {originCoords && (
+                      <CircleMarker center={originCoords} radius={8} pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.8 }}>
+                        <Popup>Origem: {batch.origin}</Popup>
+                      </CircleMarker>
+                    )}
+                    {destCoords && (
+                      <CircleMarker center={destCoords} radius={8} pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.8 }}>
+                        <Popup>Destino: {batch.destination}</Popup>
+                      </CircleMarker>
+                    )}
+
+                    {batch.checkpoints && batch.checkpoints.map((checkpoint, index) => (
                       <Marker key={index} position={[checkpoint.lat, checkpoint.lng]}>
                         <Popup>
                           <div className="min-w-[200px]">
                             <div className="font-semibold mb-2">{checkpoint.desc}</div>
                             <div className="text-sm text-gray-600 space-y-1">
-                              <div className="flex items-center">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {checkpoint.timestamp}
-                              </div>
+                              <div>📅 {checkpoint.timestamp}</div>
+                              <div>👤 {checkpoint.operator}</div>
                               <div className="flex items-center">
                                 {getTransportIcon(checkpoint.transport)}
                                 <span className="ml-2">{checkpoint.transport}</span>
                               </div>
-                              <div>📍 {checkpoint.status}</div>
+                              <div>📍 Status: {checkpoint.status}</div>
                             </div>
                           </div>
                         </Popup>
@@ -275,7 +300,7 @@ export default function PublicBatch() {
                 <Calendar className="w-5 h-5 mr-2 text-indigo-600" />
                 Linha do Tempo
               </h3>
-              
+
               {batch.checkpoints.length > 0 ? (
                 <div className="space-y-4">
                   {/* Criação do Lote */}

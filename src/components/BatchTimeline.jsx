@@ -13,22 +13,24 @@ export default function BatchTimeline({ batch }) {
   const events = []
 
   // Evento de criação
-  const productTotals = batch.producers.reduce((acc, producer) => {
-    if (producer.batchProducts) {
+  const productTotals = (batch.producers || []).reduce((acc, producer) => {
+    if (producer && producer.batchProducts) {
       Object.entries(producer.batchProducts).forEach(([product, qty]) => {
-        acc[product] = (acc[product] || 0) + qty
+        acc[product] = (acc[product] || 0) + (qty || 0)
       })
     }
     return acc
   }, {})
   
-  const productsText = Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
+  const productsText = Object.entries(productTotals).length > 0 
+    ? Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
+    : 'Nenhum produto'
   
   events.push({
     type: 'created',
     timestamp: batch.createdAt,
     title: 'Lote Criado',
-    description: `${batch.producers.length} produtores agregados • ${productsText}`,
+    description: `${batch.producers?.length || 0} produtores agregados • ${productsText}`,
     icon: <Package className="w-4 h-4" />,
     color: 'indigo'
   })
@@ -46,16 +48,18 @@ export default function BatchTimeline({ batch }) {
   }
 
   // Eventos de checkpoints
-  batch.checkpoints.forEach((checkpoint, index) => {
-    events.push({
-      type: 'checkpoint',
-      timestamp: checkpoint.timestamp,
-      title: checkpoint.desc,
-      description: `${checkpoint.transport} • ${checkpoint.status} • ${checkpoint.operator} • Lat: ${checkpoint.lat}, Lng: ${checkpoint.lng}`,
-      icon: getTransportIcon(checkpoint.transport),
-      color: 'blue'
+  if (batch.checkpoints && batch.checkpoints.length > 0) {
+    batch.checkpoints.forEach((checkpoint, index) => {
+      events.push({
+        type: 'checkpoint',
+        timestamp: checkpoint.timestamp,
+        title: checkpoint.desc || 'Checkpoint',
+        description: `${checkpoint.transport || 'N/A'} • ${checkpoint.status || 'N/A'} • ${checkpoint.operator || 'N/A'} • Lat: ${checkpoint.lat}, Lng: ${checkpoint.lng}`,
+        icon: getTransportIcon(checkpoint.transport),
+        color: 'blue'
+      })
     })
-  })
+  }
 
   // Ordenar eventos por timestamp
   events.sort((a, b) => {
