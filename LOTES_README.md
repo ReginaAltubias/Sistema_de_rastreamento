@@ -30,7 +30,7 @@ Durante o transporte, o sistema registra:
 - **Data e hora** do checkpoint
 - **Operador responsável** (login obrigatório)
 - **Tipo de transporte**: 🚚 Camião, 🚢 Navio, ✈️ Avião
-- **Status personalizado** (Em trânsito, Armazém, Porto, etc.)
+- **Status personalizado** (Em trânsito, Armazém, Porto, Alfândega, Entregue.)
 
 ### 5. Portal Público (`/public/batch/:id`)
 Qualquer pessoa pode consultar:

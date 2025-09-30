@@ -246,8 +246,8 @@ export default function BatchTracking() {
       }, {})
       return Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
     })(),
-    link: `${window.location.origin}/public/batch/${batch.id}`
-  })
+    link: <button onclick="window.open('http://localhost/public/batch/1', '_blank')">Portal Público</button>
+  }, null, 2).replace(/\"([^(\")"]+)\":/g,"$1:") // remove aspas das chaves
   const mapCenter = batch.checkpoints && batch.checkpoints.length > 0
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng]
     : [0, 0]
