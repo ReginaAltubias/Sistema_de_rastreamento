@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { Package, Users, MapPin, Shield, Calendar, Truck, Ship, Plane } from 'lucide-react'
@@ -27,9 +27,58 @@ export default function PublicBatch() {
       const batchesDB = JSON.parse(localStorage.getItem('batchesDB') || '[]')
       const foundBatch = batchesDB.find(b => b.id === id)
       setBatch(foundBatch)
+      if (foundBatch && foundBatch.origin && foundBatch.destination) {
+        fetchRoute(foundBatch)
+      }
       setLoading(false)
     }, 500)
   }, [id])
+
+  async function fetchRoute(batch) {
+    try {
+      const fetchWithTimeout = (url, timeout = 5000) => {
+        return Promise.race([
+          fetch(url),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
+        ])
+      }
+
+      const orRes = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.origin)}`)
+      if (!orRes.ok) throw new Error('Erro na API de origem')
+      const orJson = await orRes.json()
+      if (!orJson || orJson.length === 0) return
+      const [olat, olng] = [parseFloat(orJson[0].lat), parseFloat(orJson[0].lon)]
+
+      const deRes = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(batch.destination)}`)
+      if (!deRes.ok) throw new Error('Erro na API de destino')
+      const deJson = await deRes.json()
+      if (!deJson || deJson.length === 0) return
+      const [dlat, dlng] = [parseFloat(deJson[0].lat), parseFloat(deJson[0].lon)]
+
+      setOriginCoords([olat, olng])
+      setDestCoords([dlat, dlng])
+
+      if (batch.modoTransporte === 'Avião') {
+        setRoute([[olat, olng], [dlat, dlng]])
+      } else {
+        try {
+          const osrm = await fetchWithTimeout(`https://router.project-osrm.org/route/v1/driving/${olng},${olat};${dlng},${dlat}?overview=full&geometries=geojson`)
+          if (!osrm.ok) throw new Error('Erro na API de rota')
+          const osrmJson = await osrm.json()
+          if (osrmJson.routes && osrmJson.routes.length > 0) {
+            const coords = osrmJson.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
+            setRoute(coords)
+          } else {
+            setRoute([[olat, olng], [dlat, dlng]])
+          }
+        } catch {
+          setRoute([[olat, olng], [dlat, dlng]])
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao buscar rota:', err)
+    }
+  }
 
   function getStatusColor(status) {
     switch (status) {
