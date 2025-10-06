@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Package, Users, MapPin, Truck, Ship, Plane, QrCode, Shield, User, LogOut, Copy, Edit } from 'lucide-react'
+import { Package, Users, MapPin, Truck, Ship, Plane, QrCode, Shield, User, LogOut, Copy, Edit, Calendar } from 'lucide-react'
 import QRCode from 'qrcode.react'
 import BatchTimeline from '../components/BatchTimeline'
 
@@ -447,7 +447,7 @@ export default function BatchTracking() {
 
                 <button
                   onClick={openCheckpointModal}
-                  disabled={!batch.sealed}
+                  disabled={!batch.sealed || batch.status === 'Entregue'}
                   className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <MapPin className="w-5 h-5 mr-2" />
@@ -455,6 +455,9 @@ export default function BatchTracking() {
                 </button>
                 {!batch.sealed && (
                   <p className="text-xs text-gray-500 text-center">Lote deve estar selado para registrar checkpoints</p>
+                )}
+                {batch.status === 'Entregue' && (
+                  <p className="text-xs text-gray-500 text-center">Lote já foi entregue</p>
                 )}
               </div>
             </div>
@@ -536,13 +539,13 @@ export default function BatchTracking() {
                         <div className="min-w-[200px]">
                           <div className="font-semibold mb-2">{checkpoint.desc}</div>
                           <div className="text-sm text-gray-600 space-y-1">
-                            <div>📅 {checkpoint.timestamp}</div>
-                            <div>👤 {checkpoint.operator}</div>
+                            <div className='flex gap-1'><Calendar size={18}></Calendar> {checkpoint.timestamp}</div>
+                            <div className='flex gap-1'><User size={18}></User> {checkpoint.operator}</div>
                             <div className="flex items-center">
                               {getTransportIcon(checkpoint.transport)}
                               <span className="ml-2">{checkpoint.transport}</span>
                             </div>
-                            <div>📍 Status: {checkpoint.status}</div>
+                            <div>📍 Estado: {checkpoint.status}</div>
                           </div>
                         </div>
                       </Popup>
