@@ -210,6 +210,28 @@ export default function BatchTracking() {
     }
   }
 
+  function handleScan(link) {
+    window.open(link, '_blank')
+  }
+
+  function renderDecodedData(data, batchId) {
+    const lines = data.split('\n')
+    return lines.map((line, index) => {
+      if (line.trim() === 'Veja o portal público') {
+        return (
+          <button
+            key={index}
+            onClick={() => handleScan(`https://sistema-de-rastreamento.vercel.app/public/batch/${batchId}`)}
+            className="text-blue-600 hover:text-blue-800 underline font-bold bg-none border-none cursor-pointer"
+          >
+            {line}
+          </button>
+        )
+      }
+      return <div key={index}>{line}</div>
+    })
+  }
+
   if (!batch) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -223,32 +245,35 @@ export default function BatchTracking() {
       </div>
     )
   }
-
-  const qrData = JSON.stringify({
-    nome: batch.name,
-    origem: batch.origin,
-    destino: batch.destination,
-    quantidade: `${batch.totalQuantity}t`,
-    produtos: (() => {
-      if (!batch.producers || batch.producers.length === 0) return 'Nenhum produto'
-      const productTotals = batch.producers.reduce((acc, producer) => {
-        if (producer && producer.batchProducts) {
-          Object.entries(producer.batchProducts).forEach(([product, qty]) => {
-            acc[product] = (acc[product] || 0) + (qty || 0)
-          })
+  const qrData =
+    `Nome: ${batch.name}
+    Origem: ${batch.origin}
+    Destino: ${batch.destination}
+    Quantidade: ${batch.totalQuantity}t
+    Produtos: ${(() => {
+          if (!batch.producers || batch.producers.length === 0) return 'Nenhum produto'
+          const productTotals = batch.producers.reduce((acc, producer) => {
+            if (producer && producer.batchProducts) {
+              Object.entries(producer.batchProducts).forEach(([product]) => {
+                acc[product] = (acc[product] || 0)
+              })
+            }
+            return acc
+          }, {})
+          return Object.keys(productTotals).join(', ')
+        })()} 
+    Último Checkpoint: ${batch.checkpoints && batch.checkpoints.length > 0
+          ? batch.checkpoints[batch.checkpoints.length - 1].desc
+          : 'Nenhum checkpoint registrado'
         }
-        return acc
-      }, {})
-      return Object.entries(productTotals).map(([product, qty]) => `${product}: ${qty.toFixed(1)}t`).join(', ')
-    })(),
-    ultimoCheckpoint: batch.checkpoints && batch.checkpoints.length > 0 
-      ? `${batch.checkpoints[batch.checkpoints.length - 1].desc} `
-      : 'Nenhum checkpoint registrado',
-    link: `${window.location.origin}/public/batch/${batch.id}`
-  }, null, 2).replace(/\"([^ (\")"]+)\":/g,"$1:") 
+        Veja o portal público:${'\n'}https://sistema-de-rastreamento.vercel.app/public/batch/${batch.id}`
+
+
+
   const mapCenter = batch.checkpoints && batch.checkpoints.length > 0
     ? [batch.checkpoints[0].lat, batch.checkpoints[0].lng]
     : [0, 0]
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -257,17 +282,15 @@ export default function BatchTracking() {
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Lote: {batch.name}
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Código: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{batch.batchCode}</span>
               </h1>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className={`inline-flex items-center px-4 py-2 rounded-full border-2 ${getStatusColor(batch.status)} font-semibold`}>
                   {batch.sealed && <Shield className="w-4 h-4 mr-2" />}
                   {batch.status}
                 </div>
-                <div className="text-sm text-gray-600">
-                  Código: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{batch.batchCode}</span>
-                </div>
+                
               </div>
             </div>
 
@@ -465,6 +488,8 @@ export default function BatchTracking() {
                 Baixar QR Code
               </button>
             </div>
+
+          
           </div>
 
           {/* Conteúdo Principal */}
@@ -570,7 +595,7 @@ export default function BatchTracking() {
                   </select>
                 </div>
 
-                <div>
+                {/*<div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Local/Posto de controle</label>
                   <input
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
@@ -578,7 +603,7 @@ export default function BatchTracking() {
                     value={checkpointData.location}
                     onChange={(e) => setCheckpointData({ ...checkpointData, location: e.target.value })}
                   />
-                </div>
+                </div>*/}
               </div>
 
               <div className="flex gap-3 mt-6">

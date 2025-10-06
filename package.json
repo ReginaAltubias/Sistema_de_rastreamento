@@ -9,14 +9,17 @@
   },
   "dependencies": {
     "@types/react": "^19.1.13",
+    "country-state-city": "^3.2.1",
     "leaflet": "^1.9.4",
     "lucide": "^0.544.0",
     "lucide-react": "^0.396.0",
     "qrcode.react": "^3.2.0",
     "react": "^18.3.1",
+    "react-country-state-city": "^1.1.12",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^6.30.1",
+    "react-select": "^5.10.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",

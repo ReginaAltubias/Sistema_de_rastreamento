@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Package, Users, Plus, X } from 'lucide-react'
+import Select from 'react-select'
+import { Country, City } from 'country-state-city'
 
 export default function BatchForm() {
   const [batchName, setBatchName] = useState('')
 
   const [totalQuantity, setTotalQuantity] = useState('')
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
+  const [originCountry, setOriginCountry] = useState(null)
+  const [originCity, setOriginCity] = useState(null)
+  const [destCountry, setDestCountry] = useState(null)
+  const [destCity, setDestCity] = useState(null)
+  const [countries, setCountries] = useState([])
+  const [originCities, setOriginCities] = useState([])
+  const [destCities, setDestCities] = useState([])
   const [modoTransporte, setModoTransporte] = useState('Carro')
   const [selectedProducers, setSelectedProducers] = useState([])
   const [producerProducts, setProducerProducts] = useState({})
@@ -22,11 +29,42 @@ export default function BatchForm() {
   })
   const [showAddProducer, setShowAddProducer] = useState(false)
   const navigate = useNavigate()
+ 
 
   useEffect(() => {
     const savedProducers = JSON.parse(localStorage.getItem('producersDB') || '[]')
     setProducers(savedProducers)
+    
+    // Carregar todos os países
+    const countryOptions = Country.getAllCountries()
+      .map(c => ({ value: c.isoCode, label: c.name }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+    setCountries(countryOptions)
   }, [])
+
+  // Buscar cidades do país de origem
+  useEffect(() => {
+    if (originCountry?.value) {
+      const cityOptions = City.getCitiesOfCountry(originCountry.value)
+        .map(c => ({ value: c.name, label: c.name }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      setOriginCities(cityOptions)
+    } else {
+      setOriginCities([])
+    }
+  }, [originCountry])
+
+  // Buscar cidades do país de destino
+  useEffect(() => {
+    if (destCountry?.value) {
+      const cityOptions = City.getCitiesOfCountry(destCountry.value)
+        .map(c => ({ value: c.name, label: c.name }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      setDestCities(cityOptions)
+    } else {
+      setDestCities([])
+    }
+  }, [destCountry])
 
   function addProducer() {
     if (!newProducer.name || !newProducer.bi || !newProducer.type) return
@@ -103,16 +141,16 @@ export default function BatchForm() {
       batchProducts: producerProducts[producer.id] || {},
       batchQuantity: Object.values(producerProducts[producer.id] || {}).reduce((sum, qty) => sum + qty, 0)
     }))
-    
+
     const producersWithSubCodes = generateSubCodes(batchCode, producersWithProducts)
 
     const batch = {
       id: Date.now().toString(),
       batchCode,
-      name: batchName,
+      //name: batchName,
       totalQuantity: calculatedTotal,
-      origin,
-      destination,
+      origin: originCity ? `${originCity.label}, ${originCountry.label}` : originCountry?.label || '',
+      destination: destCity ? `${destCity.label}, ${destCountry.label}` : destCountry?.label || '',
       modoTransporte,
       producers: producersWithSubCodes,
       createdAt: new Date().toISOString(),
@@ -148,7 +186,7 @@ export default function BatchForm() {
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Informações do Lote</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+             {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Lote</label>
                 <input
                   required
@@ -157,9 +195,9 @@ export default function BatchForm() {
                   onChange={(e) => setBatchName(e.target.value)}
                   placeholder="Ex: Lote Café Premium Janeiro 2025"
                 />
-              </div>
+              </div>*/}
 
-              <div>
+              <div className='col-span-1 md:col-span-2'>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quantidade Total (toneladas)
                 </label>
@@ -172,13 +210,112 @@ export default function BatchForm() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Origem (ex: Luanda)</label>
-                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={origin} onChange={(e) => setOrigin(e.target.value)} />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Origem - País</label>
+                <Select
+                  options={countries}
+                  value={originCountry}
+                  onChange={(selected) => {
+                    setOriginCountry(selected)
+                    setOriginCity(null)
+                  }}
+                  placeholder="Selecione o país"
+                  isSearchable
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      padding: '0.125rem',
+                      '&:hover': { borderColor: '#6366f1' },
+                      '&:focus-within': { borderColor: '#6366f1', boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)' }
+                    }),
+                    menu: (base) => ({ ...base, zIndex: 9999 })
+                  }}
+                />
               </div>
+
+              {originCountry && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Origem - Cidade</label>
+                  <Select
+                    options={originCities}
+                    value={originCity}
+                    onChange={setOriginCity}
+                    placeholder="Selecione a cidade"
+                    isSearchable
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        padding: '0.125rem',
+                        '&:hover': { borderColor: '#6366f1' },
+                        '&:focus-within': { borderColor: '#6366f1', boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)' }
+                      }),
+                      menu: (base) => ({ ...base, zIndex: 9999, maxHeight: '200px' }),
+                      menuList: (base) => ({ ...base, maxHeight: '200px' })
+                    }}
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Destino (ex: Lisboa)</label>
-                <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={destination} onChange={(e) => setDestination(e.target.value)} />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Destino - País</label>
+                <Select
+                  options={countries}
+                  value={destCountry}
+                  onChange={(selected) => {
+                    setDestCountry(selected)
+                    setDestCity(null)
+                  }}
+                  placeholder="Selecione o país"
+                  isSearchable
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      padding: '0.125rem',
+                      '&:hover': { borderColor: '#6366f1' },
+                      '&:focus-within': { borderColor: '#6366f1', boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)' }
+                    }),
+                    menu: (base) => ({ ...base, zIndex: 9999 })
+                  }}
+                />
               </div>
+
+              {destCountry && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Destino - Cidade</label>
+                  <Select
+                    options={destCities}
+                    value={destCity}
+                    onChange={setDestCity}
+                    placeholder="Selecione a cidade"
+                    isSearchable
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        padding: '0.125rem',
+                        '&:hover': { borderColor: '#6366f1' },
+                        '&:focus-within': { borderColor: '#6366f1', boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)' }
+                      }),
+                      menu: (base) => ({ ...base, zIndex: 9999, maxHeight: '200px' }),
+                      menuList: (base) => ({ ...base, maxHeight: '200px' })
+                    }}
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Modo de Transporte</label>
                 <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={modoTransporte} onChange={(e) => setModoTransporte(e.target.value)}>
@@ -244,7 +381,7 @@ export default function BatchForm() {
                     <option value="Florestal">Florestal</option>
                     <option value="Agrícola">Agrícola</option>
                   </select>
-                 
+
                   <button
                     type="button"
                     onClick={addProducer}

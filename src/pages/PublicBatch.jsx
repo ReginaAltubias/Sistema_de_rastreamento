@@ -148,16 +148,13 @@ export default function PublicBatch() {
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                {batch.name}
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Código: <span className="font-mono bg-gray-100 px-2 py-1 rounded ">{batch.batchCode}</span>
               </h2>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className={`inline-flex items-center px-4 py-2 rounded-full border-2 ${getStatusColor(batch.status)} font-semibold`}>
                   {batch.sealed && <Shield className="w-4 h-4 mr-2" />}
                   {batch.status}
-                </div>
-                <div className="text-sm text-gray-600">
-                  Código: <span className="font-mono bg-gray-100 px-2 py-1 rounded text-lg">{batch.batchCode}</span>
                 </div>
               </div>
             </div>

@@ -205,7 +205,7 @@ export default function Dashboard() {
                 <div key={batch.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                      <h4 className="font-medium text-gray-900">{batch.name}</h4>
+                      <h4 className="font-medium text-gray-900">{batch.batchCode}</h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(batch.status)}`}>
                         {batch.sealed && <Shield className="w-3 h-3 inline mr-1" />}
                         {batch.status}

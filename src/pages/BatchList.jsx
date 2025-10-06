@@ -23,13 +23,13 @@ export default function BatchList() {
   }
 
   const filteredBatches = batches.filter(batch => {
-    const matchesSearch = batch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    //const matchesSearch = batch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          batch.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          batch.product.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesFilter = filterStatus === 'all' || batch.status === filterStatus
     
-    return matchesSearch && matchesFilter
+    return  matchesFilter
   })
 
   return (
@@ -119,7 +119,7 @@ export default function BatchList() {
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">{batch.name}</h3>
+                        <h3 className="text-base font-semibold text-gray-900">{batch.batchCode}</h3>
                         <div className={`inline-flex items-center px-3 py-1 rounded-full border ${getStatusColor(batch.status)} text-sm font-medium`}>
                           {batch.sealed && <Shield className="w-3 h-3 mr-1" />}
                           {batch.status}
@@ -145,12 +145,7 @@ export default function BatchList() {
                         </div>
                       </div>
                       
-                      <div className="mt-3">
-                        <span className="text-xs text-gray-500">Código: </span>
-                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                          {batch.batchCode}
-                        </span>
-                      </div>
+                     
                     </div>
                     
                     <div className="flex items-center gap-3">
